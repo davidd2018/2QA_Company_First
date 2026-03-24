@@ -1,0 +1,16 @@
+[
+  {
+    "phone": "0901234567",
+    "fullname": "Nguyễn Khánh Quỳnh",
+    "room": "A1-102",
+    "isActive": true,
+    "password": "oldpassword123"
+  },
+  {
+    "phone": "0988888888",
+    "fullname": "Trần Văn B",
+    "room": "B2-205",
+    "isActive": false,
+    "password": null
+  }
+]
