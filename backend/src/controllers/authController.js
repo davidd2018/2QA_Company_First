@@ -35,11 +35,11 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Số điện thoại phải có 10-11 chữ số!" });
     }
 
-    // TC07: Kiểm tra độ mạnh mật khẩu
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    // TC07: Kiểm tra độ mạnh mật khẩu (8-32 ký tự)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,32}$/;
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
-        message: "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)!",
+        message: "Mật khẩu phải có ít nhất 8 ký tự, tối đa 32 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)!",
       });
     }
 
@@ -60,7 +60,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Số điện thoại đã được đăng ký!" });
     }
 
-    const existingEmail = await userRepo.findByEmail(email);
+    const existingEmail = await userRepo.findByEmail(email.toLowerCase());
     if (existingEmail) {
       return res.status(400).json({ message: "Email đã được đăng ký!" });
     }
@@ -68,7 +68,7 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     await userRepo.create({
       fullname,
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
       phone,
       room_number: residentUser.room_number || null,

@@ -17,6 +17,12 @@ const HomeResident = () => {
   const [bills, setBills] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
 
+  // Modal gửi yêu cầu
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackForm, setFeedbackForm] = useState({ title: "", content: "" });
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState("");
+
   const fullname = localStorage.getItem("fullname") || "";
   const token = localStorage.getItem("token");
 
@@ -76,6 +82,36 @@ const HomeResident = () => {
     localStorage.removeItem("userId");
     localStorage.removeItem("fullname");
     navigate("/login");
+  };
+
+  const handleSendFeedback = async (e) => {
+    e.preventDefault();
+    if (!feedbackForm.title || !feedbackForm.content) {
+      setFeedbackMsg("Vui lòng điền đầy đủ tiêu đề và nội dung!");
+      return;
+    }
+    setFeedbackSubmitting(true);
+    setFeedbackMsg("");
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      await axios.post(
+        `${API_URL}/api/resident/feedback`,
+        feedbackForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setFeedbackMsg("Gửi yêu cầu thành công!");
+      setFeedbackForm({ title: "", content: "" });
+      // Refresh danh sách feedback
+      const fRes = await axios.get(`${API_URL}/api/resident/feedback`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFeedbacks(fRes.data || []);
+      setTimeout(() => setShowFeedbackModal(false), 1200);
+    } catch (err) {
+      setFeedbackMsg(err.response?.data?.message || "Gửi thất bại, thử lại sau.");
+    } finally {
+      setFeedbackSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -188,7 +224,13 @@ const HomeResident = () => {
                 {openFeedbackCount} yêu cầu
               </h3>
             </div>
-            <button className="mt-6 w-full py-3 bg-orange-50 text-orange-700 rounded-xl font-bold text-sm hover:bg-orange-100 transition">
+            <button
+              onClick={() => {
+                setFeedbackMsg("");
+                setFeedbackForm({ title: "", content: "" });
+                setShowFeedbackModal(true);
+              }}
+              className="mt-6 w-full py-3 bg-orange-50 text-orange-700 rounded-xl font-bold text-sm hover:bg-orange-100 transition">
               Gửi yêu cầu
             </button>
           </div>
@@ -297,6 +339,61 @@ const HomeResident = () => {
           </div>
         </div>
       </main>
+
+      {/* ===== Modal Gửi Yêu Cầu ===== */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8">
+            <h3 className="text-xl font-extrabold text-gray-900 mb-1">Gửi yêu cầu hỗ trợ</h3>
+            <p className="text-sm text-gray-500 mb-6">Mô tả vấn đề bạn gặp phải, admin sẽ phản hồi sớm nhất.</p>
+
+            <form onSubmit={handleSendFeedback} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tiêu đề</label>
+                <input
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  placeholder="VD: Hỏng đèn hành lang tầng 3"
+                  value={feedbackForm.title}
+                  onChange={(e) => setFeedbackForm((p) => ({ ...p, title: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nội dung phản ánh</label>
+                <textarea
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
+                  placeholder="Mô tả chi tiết vấn đề..."
+                  rows={4}
+                  value={feedbackForm.content}
+                  onChange={(e) => setFeedbackForm((p) => ({ ...p, content: e.target.value }))}
+                />
+              </div>
+
+              {feedbackMsg && (
+                <p className={`text-sm font-medium ${feedbackMsg.includes("thành công") ? "text-green-600" : "text-red-500"}`}>
+                  {feedbackMsg}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={feedbackSubmitting}
+                  className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-sm transition disabled:opacity-60"
+                >
+                  {feedbackSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFeedbackModal(false)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition"
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
