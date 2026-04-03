@@ -1,60 +1,32 @@
-const dbPromise = require("../config/db");
+const notificationRepo = require("../repositories/notificationRepo");
 
 const listAll = async (_req, res) => {
-  const db = await dbPromise;
-  const [rows] = await db.query(
-    `SELECT id, title, content, category, author_id, created_at FROM notifications ORDER BY created_at DESC`
-  );
+  const rows = await notificationRepo.findAll();
   return res.json(rows);
 };
 
-const listAdmin = async (_req, res) => {
-  const db = await dbPromise;
-  const [rows] = await db.query(
-    `SELECT id, title, content, category, author_id, created_at FROM notifications ORDER BY created_at DESC`
-  );
-  return res.json(rows);
-};
+const listAdmin = listAll;
 
 const create = async (req, res) => {
-  const db = await dbPromise;
   const { title, content, category } = req.body || {};
   if (!title || !content)
     return res.status(400).json({ message: "Thiếu title hoặc content" });
 
-  const [result] = await db.query(
-    `INSERT INTO notifications (title, content, category, author_id) VALUES (?, ?, ?, ?)`,
-    [title, content, category || "general", req.user.id]
-  );
-  const [rows] = await db.query(
-    `SELECT id, title, content, category, author_id, created_at FROM notifications WHERE id = ?`,
-    [result.insertId]
-  );
-  return res.status(201).json(rows[0]);
+  const item = await notificationRepo.create({ title, content, category, author_id: req.user.id });
+  return res.status(201).json(item);
 };
 
 const update = async (req, res) => {
-  const db = await dbPromise;
   const { title, content, category } = req.body || {};
-  const { id } = req.params;
   if (!title || !content)
     return res.status(400).json({ message: "Thiếu title hoặc content" });
 
-  await db.query(
-    `UPDATE notifications SET title = ?, content = ?, category = ? WHERE id = ?`,
-    [title, content, category || "general", id]
-  );
-  const [rows] = await db.query(
-    `SELECT id, title, content, category, author_id, created_at FROM notifications WHERE id = ?`,
-    [id]
-  );
-  return res.json(rows[0]);
+  const item = await notificationRepo.update(req.params.id, { title, content, category });
+  return res.json(item);
 };
 
 const remove = async (req, res) => {
-  const db = await dbPromise;
-  const { id } = req.params;
-  await db.query(`DELETE FROM notifications WHERE id = ?`, [id]);
+  await notificationRepo.remove(req.params.id);
   return res.json({ message: "Đã xóa thông báo" });
 };
 
