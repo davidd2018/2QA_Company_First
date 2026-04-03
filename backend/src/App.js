@@ -15,6 +15,7 @@ const residentBillsRoutes = require("./routes/residentBillsRoutes");
 const adminBillsRoutes = require("./routes/adminBillsRoutes");
 const residentFeedbackRoutes = require("./routes/residentFeedbackRoutes");
 const adminFeedbackRoutes = require("./routes/adminFeedbackRoutes");
+const adminUsersRoutes = require("./routes/adminUsersRoutes");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api/admin/bills", adminBillsRoutes);
 
 app.use("/api/resident/feedback", residentFeedbackRoutes);
 app.use("/api/admin/feedback", adminFeedbackRoutes);
+app.use("/api/admin/users", adminUsersRoutes);
 
 // Route kiểm tra trạng thái server (tùy chọn)
 app.get("/", (req, res) => {

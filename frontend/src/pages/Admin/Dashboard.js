@@ -18,6 +18,9 @@ const Dashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [bills, setBills] = useState([]);
   const [feedbacks, setFeedbacks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [userForm, setUserForm] = useState({ fullname: "", email: "", phone: "", password: "", room_number: "", role: "resident", status: "active" });
+  const [userEditId, setUserEditId] = useState(null);
 
   // ===== Notifications form =====
   const [notifEditId, setNotifEditId] = useState(null);
@@ -44,15 +47,26 @@ const Dashboard = () => {
   const [feedbackUpdateMap, setFeedbackUpdateMap] = useState({});
 
   const fetchAll = async () => {
-    const [nRes, bRes, fRes] = await Promise.all([
+    // Dùng allSettled để 1 API lỗi không block các API còn lại
+    const [nRes, bRes, fRes, uRes] = await Promise.allSettled([
       axios.get(`${API_URL}/api/admin/notifications`, { headers }),
       axios.get(`${API_URL}/api/admin/bills`, { headers }),
       axios.get(`${API_URL}/api/admin/feedback`, { headers }),
+      axios.get(`${API_URL}/api/admin/users`, { headers }),
     ]);
 
-    setNotifications(nRes.data || []);
-    setBills(bRes.data || []);
-    setFeedbacks(fRes.data || []);
+    if (nRes.status === "fulfilled") setNotifications(nRes.value.data || []);
+    if (bRes.status === "fulfilled") setBills(bRes.value.data || []);
+    if (fRes.status === "fulfilled") setFeedbacks(fRes.value.data || []);
+    if (uRes.status === "fulfilled") setUsers(uRes.value.data || []);
+
+    // Log lỗi nếu có để dễ debug
+    [nRes, bRes, fRes, uRes].forEach((r, i) => {
+      if (r.status === "rejected") {
+        const names = ["notifications", "bills", "feedback", "users"];
+        console.warn(`API ${names[i]} lỗi:`, r.reason?.response?.data?.message || r.reason?.message);
+      }
+    });
   };
 
   useEffect(() => {
@@ -67,7 +81,7 @@ const Dashboard = () => {
 
     fetchAll()
       .catch((err) => {
-        alert(err?.response?.data?.message || "Không thể tải dashboard admin");
+        console.error("fetchAll lỗi:", err?.response?.data?.message || err.message);
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,6 +182,37 @@ const Dashboard = () => {
   const deleteFeedback = async (feedbackId) => {
     if (!window.confirm("Xóa phản ánh?")) return;
     await axios.delete(`${API_URL}/api/admin/feedback/${feedbackId}`, { headers });
+    await fetchAll();
+  };
+
+  const resetUserForm = () => {
+    setUserEditId(null);
+    setUserForm({ fullname: "", email: "", phone: "", password: "", room_number: "", role: "resident", status: "active" });
+  };
+
+  const startEditUser = (u) => {
+    setUserEditId(u.id);
+    setUserForm({ fullname: u.fullname || "", email: u.email || "", phone: u.phone || "", password: "", room_number: u.room_number || "", role: u.role || "resident", status: u.status || "active" });
+  };
+
+  const submitUser = async (e) => {
+    e.preventDefault();
+    if (!userForm.fullname || !userForm.phone) return alert("Thiếu họ tên hoặc số điện thoại");
+    if (!userEditId && !userForm.password) return alert("Thiếu mật khẩu");
+    if (userEditId) {
+      const payload = { ...userForm };
+      if (!payload.password) delete payload.password;
+      await axios.put(`${API_URL}/api/admin/users/${userEditId}`, payload, { headers });
+    } else {
+      await axios.post(`${API_URL}/api/admin/users`, userForm, { headers });
+    }
+    resetUserForm();
+    await fetchAll();
+  };
+
+  const deleteUser = async (id) => {
+    if (!window.confirm("Xóa tài khoản này?")) return;
+    await axios.delete(`${API_URL}/api/admin/users/${id}`, { headers });
     await fetchAll();
   };
 
@@ -384,7 +429,7 @@ const Dashboard = () => {
       </section>
 
       {/* ================= Feedback ================= */}
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-8">
         <h2 className="font-extrabold text-gray-900 text-lg mb-3">Quản lý phản ánh/hỗ trợ</h2>
 
         <div className="overflow-auto">
@@ -460,6 +505,92 @@ const Dashboard = () => {
                     Chưa có phản ánh.
                   </td>
                 </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {/* ================= Users ================= */}
+      <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-extrabold text-gray-900 text-lg">Danh sách cư dân</h2>
+          <span className="text-sm text-gray-400">{users.length} tài khoản</span>
+        </div>
+
+        {/* Form thêm/sửa */}
+        <form onSubmit={submitUser} className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <input className="border rounded-xl px-3 py-2" placeholder="Họ tên *" value={userForm.fullname} onChange={(e) => setUserForm(p => ({ ...p, fullname: e.target.value }))} />
+          <input className="border rounded-xl px-3 py-2" placeholder="Email" value={userForm.email} onChange={(e) => setUserForm(p => ({ ...p, email: e.target.value }))} />
+          <input className="border rounded-xl px-3 py-2" placeholder="Số điện thoại *" value={userForm.phone} onChange={(e) => setUserForm(p => ({ ...p, phone: e.target.value }))} />
+          <input className="border rounded-xl px-3 py-2" placeholder={userEditId ? "Mật khẩu mới (để trống = giữ nguyên)" : "Mật khẩu *"} type="password" value={userForm.password} onChange={(e) => setUserForm(p => ({ ...p, password: e.target.value }))} />
+          <input className="border rounded-xl px-3 py-2" placeholder="Phòng (VD: A1-101)" value={userForm.room_number} onChange={(e) => setUserForm(p => ({ ...p, room_number: e.target.value }))} />
+          <div className="flex gap-2">
+            <select className="border rounded-xl px-3 py-2 flex-1" value={userForm.role} onChange={(e) => setUserForm(p => ({ ...p, role: e.target.value }))}>
+              <option value="resident">resident</option>
+              <option value="staff">staff</option>
+              <option value="manager">manager</option>
+              <option value="admin">admin</option>
+            </select>
+            <select className="border rounded-xl px-3 py-2 flex-1" value={userForm.status} onChange={(e) => setUserForm(p => ({ ...p, status: e.target.value }))}>
+              <option value="active">active</option>
+              <option value="pending">pending</option>
+              <option value="inactive">inactive</option>
+            </select>
+          </div>
+          <div className="md:col-span-3 flex gap-2">
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl">
+              {userEditId ? "Cập nhật" : "Thêm tài khoản"}
+            </button>
+            {userEditId && (
+              <button type="button" onClick={resetUserForm} className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-xl">
+                Hủy
+              </button>
+            )}
+          </div>
+        </form>
+
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-100">
+                <th className="py-2 pr-4">ID</th>
+                <th className="py-2 pr-4">Họ tên</th>
+                <th className="py-2 pr-4">Email</th>
+                <th className="py-2 pr-4">Số điện thoại</th>
+                <th className="py-2 pr-4">Phòng</th>
+                <th className="py-2 pr-4">Vai trò</th>
+                <th className="py-2 pr-4">Trạng thái</th>
+                <th className="py-2 pr-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-t border-gray-100 hover:bg-slate-50 transition">
+                  <td className="py-2 pr-4 text-gray-400">{u.id}</td>
+                  <td className="py-2 pr-4 font-medium text-gray-800">{u.fullname}</td>
+                  <td className="py-2 pr-4 text-gray-600">{u.email || "-"}</td>
+                  <td className="py-2 pr-4 text-gray-600">{u.phone || "-"}</td>
+                  <td className="py-2 pr-4">{u.room_number || "-"}</td>
+                  <td className="py-2 pr-4">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${u.role === "admin" ? "bg-purple-100 text-purple-700" : u.role === "manager" ? "bg-blue-100 text-blue-700" : u.role === "staff" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-600"}`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${u.status === "active" ? "bg-green-100 text-green-700" : u.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-600"}`}>
+                      {u.status}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4">
+                    <div className="flex gap-2">
+                      <button onClick={() => startEditUser(u)} className="bg-yellow-50 hover:bg-yellow-100 text-yellow-800 font-bold px-3 py-1 rounded-lg">Sửa</button>
+                      <button onClick={() => deleteUser(u.id)} className="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-3 py-1 rounded-lg">Xóa</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr><td colSpan="8" className="py-4 text-center text-gray-400">Chưa có tài khoản nào.</td></tr>
               )}
             </tbody>
           </table>
