@@ -1,40 +1,80 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
   CreditCard,
   Bell,
   Wrench,
   LogOut,
-  UserCircle,
   ChevronRight,
 } from "lucide-react";
-// Import dữ liệu mockup
-import residentsMock from "../../mock/resident.json";
+import axios from "axios";
+import mockResidents from "../../mock/resident.json";
 
 const HomeResident = () => {
-  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [bills, setBills] = useState([]);
+  const [feedbacks, setFeedbacks] = useState([]);
+
+  const fullname = localStorage.getItem("fullname") || "";
+  const token = localStorage.getItem("token");
+
+  const pendingFee = bills
+    .filter((b) => b.status !== "paid")
+    .reduce((sum, b) => sum + Number(b.amount || 0), 0);
+
+  const openFeedbackCount = feedbacks.filter((f) =>
+    ["open", "in_progress"].includes(f.status),
+  ).length;
 
   useEffect(() => {
-    const loggedInPhone = localStorage.getItem("userPhone") || "0901234567";
+    if (!token) {
+      navigate("/login");
+      return;
+    }
 
-    const timer = setTimeout(() => {
-      const user = residentsMock.find((r) => r.phone === loggedInPhone);
-      if (user) {
-        setUserData(user);
-      } else {
-        navigate("/login");
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const fetchAll = async () => {
+      try {
+        const [nRes, bRes, fRes] = await Promise.all([
+          axios.get(`${API_URL}/api/resident/notifications`, { headers }),
+          axios.get(`${API_URL}/api/resident/bills`, { headers }),
+          axios.get(`${API_URL}/api/resident/feedback`, { headers }),
+        ]);
+
+        setNotifications(nRes.data || []);
+        setBills(bRes.data || []);
+        setFeedbacks(fRes.data || []);
+      } catch (err) {
+        // Nếu API lỗi, dùng mock data để vẫn hiển thị được trang
+        console.warn("API không khả dụng, dùng mock data:", err.message);
+        const phone = localStorage.getItem("phone") || "";
+        const mockUser = mockResidents.find((r) => r.phone === phone) || mockResidents[0];
+        setNotifications([
+          { id: 1, title: "Bảo trì thang máy", category: "maintenance", created_at: new Date().toISOString() },
+          { id: 2, title: "Lễ hội cư dân 2026", category: "event", created_at: new Date().toISOString() },
+        ]);
+        setBills([
+          { id: 1, room_number: mockUser?.room || "-", bill_type: "electricity", amount: 350000, month_year: "03-2026", status: "unpaid" },
+          { id: 2, room_number: mockUser?.room || "-", bill_type: "water", amount: 120000, month_year: "03-2026", status: "unpaid" },
+        ]);
+        setFeedbacks([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }, 600);
+    };
 
-    return () => clearTimeout(timer);
-  }, [navigate]);
+    fetchAll();
+  }, [navigate, token]);
 
   const handleLogout = () => {
-    localStorage.removeItem("userPhone");
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("fullname");
     navigate("/login");
   };
 
@@ -75,10 +115,10 @@ const HomeResident = () => {
         <div className="flex items-center gap-4">
           <div className="hidden sm:block text-right">
             <p className="text-sm font-bold text-gray-800 leading-none">
-              {userData?.fullname}
+              {fullname}
             </p>
             <p className="text-xs text-blue-600 font-medium mt-1">
-              Phòng {userData?.room}
+              Phòng {bills[0]?.room_number || "-"}
             </p>
           </div>
           <button
@@ -95,7 +135,7 @@ const HomeResident = () => {
         {/* Header chào hỏi */}
         <header className="mb-10">
           <h2 className="text-3xl font-extrabold text-gray-900">
-            Xin chào, {userData?.fullname.split(" ").pop()}! 👋
+            Xin chào, {fullname ? fullname.split(" ").pop() : ""}! 👋
           </h2>
           <p className="text-gray-500 mt-2">
             Chào mừng bạn trở lại với cổng thông tin cư dân.
@@ -113,10 +153,7 @@ const HomeResident = () => {
                 Phí cần thanh toán
               </p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                {userData?.pendingFee
-                  ? userData.pendingFee.toLocaleString()
-                  : "0"}
-                đ
+                {pendingFee ? pendingFee.toLocaleString() : "0"}đ
               </h3>
             </div>
             <button className="mt-6 w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition">
@@ -131,7 +168,7 @@ const HomeResident = () => {
               </div>
               <p className="text-sm font-medium text-gray-500">Thông báo mới</p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                03 tin mới
+                {Math.min(3, notifications.length)} tin mới
               </h3>
             </div>
             <button className="mt-6 w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm hover:bg-blue-100 transition">
@@ -148,7 +185,7 @@ const HomeResident = () => {
                 Yêu cầu hỗ trợ
               </p>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
-                Kỹ thuật/Sửa chữa
+                {openFeedbackCount} yêu cầu
               </h3>
             </div>
             <button className="mt-6 w-full py-3 bg-orange-50 text-orange-700 rounded-xl font-bold text-sm hover:bg-orange-100 transition">
@@ -170,22 +207,29 @@ const HomeResident = () => {
               </button>
             </div>
             <div className="space-y-6">
-              {[1, 2].map((i) => (
+              {notifications.slice(0, 2).map((n) => (
                 <div
-                  key={i}
+                  key={n.id}
                   className="flex gap-4 items-start pb-6 border-b border-gray-50 last:border-0"
                 >
                   <div className="bg-slate-100 w-20 h-20 rounded-2xl shrink-0 object-cover"></div>
                   <div>
                     <h5 className="font-bold text-gray-800 leading-snug">
-                      Thông báo bảo trì thang máy tòa nhà A1 tháng 3/2026
+                      {n.title}
                     </h5>
                     <p className="text-xs text-gray-400 mt-1">
-                      2 giờ trước • Ban quản lý
+                      {n.category} •{" "}
+                      {n.created_at
+                        ? new Date(n.created_at).toLocaleString()
+                        : ""}
                     </p>
                   </div>
                 </div>
               ))}
+
+              {notifications.length === 0 && (
+                <div className="text-sm text-gray-500">Chưa có thông báo.</div>
+              )}
             </div>
           </div>
 
@@ -196,17 +240,55 @@ const HomeResident = () => {
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-white/10 text-sm">
                   <span className="opacity-70">Chủ hộ</span>
-                  <span className="font-bold">{userData?.fullname}</span>
+                  <span className="font-bold">{fullname}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-white/10 text-sm">
                   <span className="opacity-70">Mã căn hộ</span>
-                  <span className="font-bold">{userData?.room}</span>
+                  <span className="font-bold">
+                    {bills[0]?.room_number || "-"}
+                  </span>
                 </div>
                 <div className="flex justify-between py-3 text-sm">
                   <span className="opacity-70">Trạng thái</span>
                   <span className="bg-green-400 text-green-900 px-3 py-1 rounded-full font-bold text-[10px] uppercase">
                     Đang cư trú
                   </span>
+                </div>
+
+                <div className="pt-4 border-t border-white/10">
+                  <h5 className="font-bold text-sm mb-3">Hóa đơn gần đây</h5>
+                  <div className="space-y-2">
+                    {bills.slice(0, 3).map((b) => (
+                      <div key={b.id} className="flex justify-between text-xs">
+                        <span className="opacity-80">{b.month_year}</span>
+                        <span className="font-bold">
+                          {b.bill_type}:{" "}
+                          {b.amount?.toLocaleString ? b.amount.toLocaleString() : b.amount}đ
+                        </span>
+                      </div>
+                    ))}
+                    {bills.length === 0 && (
+                      <div className="text-xs opacity-80">Chưa có hóa đơn.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10">
+                  <h5 className="font-bold text-sm mb-3">Phản ánh gần đây</h5>
+                  <div className="space-y-2">
+                    {feedbacks.slice(0, 3).map((f) => (
+                      <div key={f.id} className="text-xs">
+                        <div className="font-bold">{f.title}</div>
+                        <div className="opacity-80">
+                          {f.status} •{" "}
+                          {f.created_at ? new Date(f.created_at).toLocaleString() : "-"}
+                        </div>
+                      </div>
+                    ))}
+                    {feedbacks.length === 0 && (
+                      <div className="text-xs opacity-80">Chưa có phản ánh.</div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

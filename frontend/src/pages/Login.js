@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, LogIn, Phone } from "lucide-react";
-// Import dữ liệu mockup
-import residentsMock from "../mock/resident.json";
+import { Lock, Phone } from "lucide-react";
+import axios from "axios";
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -16,38 +15,33 @@ const LoginPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleLoginMock = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      const resp = await axios.post(`${API_URL}/api/auth/login`, {
+        phone: formData.phone,
+        password: formData.password,
+      });
 
-    setTimeout(() => {
-      // 1. Kiểm tra xem user này đã được kích hoạt và lưu trong localStorage chưa
-      const localUserData = localStorage.getItem(
-        `activated_user_${formData.phone}`,
-      );
-      const activatedUser = localUserData ? JSON.parse(localUserData) : null;
+      localStorage.setItem("token", resp.data.token);
+      localStorage.setItem("role", resp.data.user.role);
+      localStorage.setItem("userId", String(resp.data.user.id));
+      localStorage.setItem("fullname", resp.data.user.fullname || "");
+      localStorage.setItem("phone", formData.phone);
 
-      // 2. Tìm trong file JSON gốc
-      const originalUser = residentsMock.find(
-        (r) => r.phone === formData.phone,
-      );
-
-      const user = activatedUser || originalUser;
-
-      if (!user) {
-        alert("Số điện thoại không tồn tại!");
-      } else if (!user.isActive && !activatedUser) {
-        alert("Tài khoản chưa kích hoạt!");
-        navigate("/activate");
-      } else if (formData.password !== user.password) {
-        alert("Sai mật khẩu!");
-      } else {
-        localStorage.setItem("userPhone", user.phone);
-        alert(`Đăng nhập thành công!`);
+      if (resp.data.user.role === "resident") {
         navigate("/home-resident");
+      } else {
+        navigate("/dashboard");
       }
+    } catch (err) {
+      const message = err?.response?.data?.message || err.message || "Đăng nhập thất bại";
+      alert(message);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -70,13 +64,13 @@ const LoginPage = () => {
         </div>
 
         {/* Bên phải: Form Đăng nhập */}
-        <div className="w-full md:w-1/2 p-8 md:p-12">
+      <div className="w-full md:w-1/2 p-8 md:p-12">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Chào mừng!</h2>
           <p className="text-gray-500 mb-8 text-sm">
             Vui lòng đăng nhập để tiếp tục
           </p>
 
-          <form className="space-y-6" onSubmit={handleLoginMock}>
+        <form className="space-y-6" onSubmit={handleLogin}>
             {/* Input Số điện thoại */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -124,17 +118,14 @@ const LoginPage = () => {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition disabled:bg-blue-300"
             >
-              {loading ? "Đang xác thực..." : "Đăng Nhập"}
+              {loading ? "Đang đăng nhập..." : "Đăng Nhập"}
             </button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-center">
             <p className="text-gray-600 text-sm">
-              Chưa kích hoạt tài khoản cư dân?{" "}
-              <Link
-                to="/activate"
-                className="text-blue-600 font-bold hover:underline"
-              >
+              Chưa kích hoạt tài khoản?{" "}
+              <Link to="/activate" className="text-blue-600 font-bold hover:underline">
                 Kích hoạt ngay
               </Link>
             </p>

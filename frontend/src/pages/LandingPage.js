@@ -2,14 +2,6 @@ import React from "react";
 import { Bell, CreditCard, Wrench, ArrowRight } from "lucide-react";
 
 const LandingPage = () => {
-  // Hàm bổ trợ để cuộn mượt mà (tùy chọn nếu bạn muốn xử lý bằng JS)
-  const scrollToSection = (id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white font-sans scroll-smooth">
       {/* Navbar mờ ảo (Glassmorphism) */}
@@ -19,7 +11,7 @@ const LandingPage = () => {
         {/* Menu điều hướng nội bộ */}
         <div className="hidden md:flex space-x-8 items-center">
           <a
-            href="#"
+            href="#home"
             className="text-gray-600 hover:text-blue-600 font-medium transition"
           >
             Trang chủ
