@@ -45,6 +45,7 @@ const Dashboard = () => {
 
   // ===== Feedback form (inline update) =====
   const [feedbackUpdateMap, setFeedbackUpdateMap] = useState({});
+  const [viewFeedback, setViewFeedback] = useState(null); // modal xem nội dung
 
   const fetchAll = async () => {
     // Dùng allSettled để 1 API lỗi không block các API còn lại
@@ -456,6 +457,12 @@ const Dashboard = () => {
                   <td className="py-2 pr-2">{f.assigned_to || "-"}</td>
                   <td className="py-2 pr-2">
                     <div className="flex gap-2 items-center">
+                      <button
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-lg"
+                        onClick={() => setViewFeedback(f)}
+                      >
+                        Xem
+                      </button>
                       <select
                         className="border rounded-lg px-2 py-1"
                         value={feedbackUpdateMap[f.id]?.status || ""}
@@ -472,17 +479,6 @@ const Dashboard = () => {
                         <option value="resolved">resolved</option>
                         <option value="closed">closed</option>
                       </select>
-                      <input
-                        className="border rounded-lg px-2 py-1 w-28"
-                        placeholder="assigned_to id"
-                        value={feedbackUpdateMap[f.id]?.assigned_to || ""}
-                        onChange={(e) =>
-                          setFeedbackUpdateMap((p) => ({
-                            ...p,
-                            [f.id]: { ...(p[f.id] || {}), assigned_to: e.target.value },
-                          }))
-                        }
-                      />
                       <button
                         className="bg-green-50 hover:bg-green-100 text-green-800 font-bold px-3 py-1 rounded-lg"
                         onClick={() => updateFeedback(f.id)}
@@ -596,6 +592,45 @@ const Dashboard = () => {
           </table>
         </div>
       </section>
+
+      {/* ===== Modal Xem Nội Dung Phản Ánh (Admin) ===== */}
+      {viewFeedback && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 p-8">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-extrabold text-gray-900">{viewFeedback.title}</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Từ: <span className="font-medium text-gray-600">{viewFeedback.resident_fullname || "-"}</span>
+                  {" · "}
+                  {viewFeedback.created_at ? new Date(viewFeedback.created_at).toLocaleString() : ""}
+                </p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ml-4 ${
+                viewFeedback.status === "open" ? "bg-yellow-100 text-yellow-700" :
+                viewFeedback.status === "in_progress" ? "bg-blue-100 text-blue-700" :
+                viewFeedback.status === "resolved" ? "bg-green-100 text-green-700" :
+                "bg-gray-100 text-gray-500"
+              }`}>
+                {viewFeedback.status}
+              </span>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-5 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap min-h-[100px]">
+              {viewFeedback.content}
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => setViewFeedback(null)}
+                className="px-6 py-2.5 bg-gray-900 hover:bg-gray-700 text-white font-bold rounded-xl text-sm transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
