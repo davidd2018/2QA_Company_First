@@ -4,3 +4,5 @@ backend/node_modules/
 frontend/node_modules/
 .idea/
 .vscode/
+backend/src/config/firebase.js
+backend/src/config/serviceAccountKey.json

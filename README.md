@@ -1,30 +1,107 @@
-Website Cổng Thông Tin Cư Dân & Quản Lý Dịch Vụ Chung Cư
-Hệ thống chuyên biệt hỗ trợ cư dân đăng ký thẻ xe, sử dụng tiện ích nội khu và tiếp nhận phản ánh trực tuyến giúp tối ưu quy trình vận hành của Ban Quản lý.
+# 2QA Apartment — Cổng Thông Tin Cư Dân
 
-✨ Tính năng chính
-👤 Dành cho Cư dân
-Quản lý Thẻ xe: Đăng ký cấp mới, gia hạn hoặc báo mất thẻ xe (ô tô, xe máy) trực tuyến. Theo dõi trạng thái duyệt thẻ.
+Hệ thống quản lý chung cư: hóa đơn, thông báo, phản ánh cho cư dân và ban quản lý.
 
-Đăng ký Dịch vụ: Đặt lịch sử dụng các tiện ích nội khu như: Khu BBQ, Sân Tennis, Phòng cộng đồng, Bể bơi.
+---
 
-Thanh toán: Đối soát và thanh toán phí gửi xe, phí dịch vụ hàng tháng qua cổng online.
+## Yêu cầu
 
-Phản ánh: Gửi khiếu nại hoặc báo hỏng hóc kỹ thuật kèm hình ảnh trực tiếp cho BQL.
+- Node.js >= 18
+- MySQL >= 8 (HeidiSQL, XAMPP, hoặc MySQL Workbench đều được)
 
-🛠️ Dành cho Ban Quản lý (Admin)
-Duyệt Thẻ xe: Tiếp nhận hồ sơ đăng ký thẻ xe, cấp mã thẻ và quản lý danh sách phương tiện trong hầm.
+---
 
-Điều phối Dịch vụ: Quản lý lịch đặt chỗ tiện ích, tránh trùng lặp và kiểm soát số lượng người sử dụng.
+## Cài đặt & Chạy
 
-Quản lý Cư dân: Lưu trữ hồ sơ nhân khẩu, căn hộ và quản lý biến động (chuyển đi/đến).
+### 1. Clone repo
 
-Hóa đơn & Thống kê: Tự động tổng hợp phí gửi xe và dịch vụ vào hóa đơn tháng. Xuất báo cáo doanh thu định kỳ.
+```bash
+git clone <repo-url>
+```
 
-🛠 Công nghệ sử dụng
-Frontend: React.js, Tailwind CSS, Headless UI.
+### 2. Backend
 
-Backend: Node.js, Express.js.
+```bash
+cd backend
+npm install
+```
 
-Database: MySQL (Quản lý dữ liệu có cấu trúc: Thẻ xe, Hóa đơn) hoặc MongoDB.
+Tạo file `.env` từ mẫu:
 
-Khác: JWT Auth, Cloudinary (Lưu ảnh đăng ký xe/phản ánh).
+```bash
+cp .env.example .env
+```
+
+Mở `.env` và điền mật khẩu MySQL của bạn:
+
+```
+PORT=5000
+JWT_SECRET=your_secret_key_here
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_mysql_password_here
+DB_NAME=ql_chungcu
+```
+
+> **Lưu ý:** Không cần tạo database thủ công. Backend sẽ tự tạo database `ql_chungcu` và tất cả bảng khi khởi động lần đầu.
+
+Chạy backend:
+
+```bash
+npm start
+```
+
+Server chạy tại `http://localhost:5000`
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Frontend chạy tại `http://localhost:3000`
+
+---
+
+## Tài khoản mẫu
+
+Sau khi backend khởi động lần đầu, thêm user mẫu bằng cách chạy lệnh sau trong thư mục `backend`:
+
+```bash
+node scripts/seed.js
+```
+
+Hoặc dùng tính năng **Kích hoạt tài khoản** trên giao diện để tạo tài khoản mới.
+
+---
+
+## Cấu trúc dự án
+
+```
+├── backend/
+│   ├── src/
+│   │   ├── config/db.js        # Kết nối DB, tự tạo bảng
+│   │   ├── controllers/        # Logic xử lý
+│   │   ├── middlewares/        # Auth, phân quyền
+│   │   └── routes/             # Định nghĩa API
+│   ├── .env.example            # Mẫu cấu hình môi trường
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── pages/              # Các trang (Login, Home, Dashboard)
+│   │   └── mock/               # Dữ liệu mock fallback
+│   └── package.json
+└── database/
+    └── setup.sql               # SQL tham khảo (không bắt buộc)
+```
+
+---
+
+## Công nghệ
+
+- Frontend: React.js, Tailwind CSS, React Router
+- Backend: Node.js, Express.js
+- Database: MySQL (tự động khởi tạo)
+- Auth: JWT

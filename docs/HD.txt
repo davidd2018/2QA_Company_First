@@ -1,0 +1,7 @@
+Chạy backend thì mở terminal tại thư mục backend
+gõ node src/app.js -> hiển thị dòng Server started on port: 5000 
+-> chạy thành công
+
+Chạy frontedn thì mở terminal tại thư mục frontend 
+gõ npm start -> hiển thị Compiled succesfully! ra trang web
+-> chạy thành công 
